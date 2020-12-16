@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+  </head>
+  <body>
+    <div id="app">
+      <div class="container">
+        <h1>Hello Dev 💻</h1>
+        <p>
+          <span>Thanks for reading the </span><a href="https://marc.dev">marc.dev</a><span> blog</span>
+        </p>
+        <img src="https://media.giphy.com/media/26gsjCZpPolPr3sBy/giphy.gif" style="width: 350px; border-radius: 0.5rem;"/>
+      </div>
+    </app>
+
+
+    <script>
+    // *** VIRTUAL DOM ***
+
+    // Create virtual node
+    function h(tag, props, children) {
+        // Return the virtual node
+        return{
+          tag,
+          props,
+          children,
+        }
+    }
+
+    // Mount a virtual node to the DOM
+    function mount(vnode, container) {
+        // Create the element
+        const el = (vnode.el = document.createElement(vnode.tag));
+        // Set props
+        for (const key in vnode.props){
+          el.setAttribute(key, vnode.props[key]);
+        }
+        // Handle children
+        if(typeof vnode.children === 'string'){
+          el.textContent = vnode.children;
+        } else{
+          vnode.children.forEach((child) => {
+            mount(child, el);
+          });
+        }
+        // Mount to the DOM
+        container.appendChild(el);
+    }
+
+    // Unmount a virtual node from the DOM
+    function unmount(vnode) {
+        // Unmount the virtual node
+        vnode.el.parentNode.removeChild(vnode.el);
+    }
+
+    // Take 2 vnodes, compare & figure out what's the difference
+    function patch(n1, n2) {
+        const el = (n2.el = n1.el);
+        // Case where the nodes are of different tags
+        if(n1.tag !== n2.tag){
+          // Replace node
+          mount(n2, el.parentNode);
+          unmount(n1);
+        }
+        // Case where the nodes are of the same tag
+        else{
+            // Case where the new vnode has string children
+            if(typeof n2.children === 'string'){
+              el.textContent = n2.children;
+            }
+            // Case where the new vnode has an array of vnodes
+            else{
+              const c1 = n1.children;
+              const c2 = n2.children;
+              const commonLength = Math.min(c1.length, c2.length);
+
+              for(let i=0; i<commonLength; i++){
+                patch(c1[i], c2[i]);
+              }
+            }
+        }
+
+        if(c1.length > c2.length){
+          c1.slice(c2.length).forEach((child) => {
+            unmount(child);
+          });
+        } else if(c2.length).forEach(child => {
+          mount(child, el);
+        });
+    }
+
+    // Create virtual nodes & render them below this line...
+    const node2 = h('div', { class: 'container' }, [
+      h('h1', null, 'Hello Dev 💻'),
+      h('p', null, [
+      h('span', null, 'Thanks for reading the '),
+      h('a', { href: 'https://marc.dev' }, 'marc.dev'),
+      h('span', null, ' blog'),
+    ]),
+    h(
+      'img',
+      {
+        src: 'https://media.giphy.com/media/26gsjCZpPolPr3sBy/giphy.gif',
+        style: 'width: 350px; border-radius: 0.5rem;',
+      },
+      []
+    ),
+  ])
+
+  setTimeout(() => {
+    patch(node1, node2)
+  }, 3000)
+
+
+  // *** REACTIVITY***
+
+  let activeEffect
+
+  class Dep {
+      subscribers = new Set()
+      depend() {
+          if (activeEffect) this.subscribers.add(activeEffect)
+      }
+      notify() {
+          this.subscribers.forEach((sub) => sub())
+      }
+  }
+
+  function watchEffect(fn) {
+      const wrappedFn = () => {
+          activeEffect = wrappedFn
+          // clean up the deps
+          fn()
+          activeEffect = null
+      }
+
+      wrappedFn()
+  }
+
+  function reactive(obj) {
+      Object.keys(obj).forEach((key) => {
+          const dep = new Dep()
+          let value = obj[key]
+          Object.defineProperty(obj, key, {
+              get() {
+                  dep.depend()
+                  return value
+              },
+              set(newValue) {
+                  if (newValue !== value) {
+                      value = newValue
+                      dep.notify()
+                  }
+              },
+          })
+      })
+      return obj
+  }
+
+  // -------------------------
+  const state = reactive({
+      count: 1,
+      name: 'Marc',
+  })
+
+  watchEffect(() => {
+      console.log('👻 state changed', state.count, state.name)
+  })
+
+  setTimeout(() => {
+      state.count++
+      state.name = 'Johnny'
+  }, 1000)
+
+  setTimeout(() => {
+      state.count++
+  }, 2000)
+  setTimeout(() => {
+      state.count++
+  }, 3000)
+
+  </script>
+
+  </body>
+</html>
